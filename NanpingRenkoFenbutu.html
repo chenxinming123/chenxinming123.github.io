@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>南平市县级区划人口空间分布专题图</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei"; }
+        html, body { height: 100%; overflow: hidden; }
+
+        /* ====================== 1. 页眉区域 ====================== */
+        .header {
+            width: 100%;
+            height: 70px;
+            background: linear-gradient(90deg, #1e88e5, #42a5f5);
+            color: #fff;
+            text-align: center;
+            padding-top: 8px;
+            position: relative;
+            z-index: 999;
+        }
+        .header .title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .header .subtitle {
+            font-size: 14px;
+            margin-top: 4px;
+            opacity: 0.9;
+        }
+
+        /* ====================== 2. 地图区域 ====================== */
+        #map {
+            width: 100%;
+            height: calc(100% - 70px);
+        }
+
+        /* ====================== 3. 底图库 / 图层控制区域 ====================== */
+        .layerPanel {
+            position: absolute;
+            top: 80px;
+            left: 15px;
+            z-index: 999;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+            padding: 14px;
+            width: 170px;
+        }
+        .layerPanel h4 {
+            color: #1e88e5;
+            font-size: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #1e88e5;
+            padding-left: 6px;
+        }
+        .layerPanel button {
+            width: 100%;
+            height: 34px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 6px;
+            background: #f5f7fa;
+            color: #333;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .layerPanel button:hover {
+            background: #1e88e5;
+            color: #fff;
+        }
+
+        /* 可展开/收起的图层列表 */
+        .layer-list {
+            position: absolute;
+            top: 320px;
+            left: 15px;
+            z-index: 999;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+            padding: 12px;
+            width: 170px;
+            display: none;
+        }
+        .layer-list h4 {
+            color: #1e88e5;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .layer-item {
+            font-size: 13px;
+            padding: 4px 0;
+        }
+        #toggleBtn {
+            position: absolute;
+            top: 290px;
+            left: 15px;
+            z-index: 999;
+            width: 170px;
+            height: 34px;
+            border-radius: 6px;
+            border: none;
+            background: #fff;
+            color: #1e88e5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        /* 搜索框 */
+        .searchBox {
+            position: absolute;
+            top: 80px;
+            right: 15px;
+            z-index: 999;
+            width: 290px;
+            display: flex;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        .searchBox input {
+            flex: 1;
+            height: 38px;
+            border: none;
+            padding: 0 12px;
+            outline: none;
+        }
+        .searchBox button {
+            width: 60px;
+            height: 38px;
+            border: none;
+            background: #1e88e5;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        /* 图例 */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 15px;
+            z-index: 999;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+            padding: 14px;
+            font-size: 13px;
+            line-height: 1.7;
+            width: 220px;
+        }
+        .legend h4 {
+            color: #1e88e5;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .legend .colorBar {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+            border-radius: 2px;
+            vertical-align: middle;
+        }
+
+        /* 创新信息面板 */
+        .infoCard {
+            position: absolute;
+            top: 130px;
+            right: 15px;
+            z-index: 999;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+            padding: 12px;
+            width: 290px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .infoCard h4 {
+            color: #1e88e5;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+    </style>
+    <script type="text/javascript" src="https://api.map.baidu.com/api?v=1.0&type=webgl&ak=ZoiidcOvD297l6qHvxUUkKLG40WG60Mo"></script>
+</head>
+
+<body>
+    <!-- ====================== 1. 页眉 ====================== -->
+    <div class="header">
+        <div class="title">南平市县级区划人口空间分布专题图</div>
+        <div class="subtitle">这是南平市县级区划与人口可视化地图</div>
+    </div>
+
+    <!-- ====================== 3. 底图库/图层控制区 ====================== -->
+    <div class="layerPanel">
+        <h4>🗺️ 底图控制</h4>
+        <button onclick="setBaseNormal()">标准地图</button>
+        <button onclick="setBaseSatellite()">卫星地图</button>
+        <h4>📌 专题图层</h4>
+        <button onclick="showCounties()">显示区县边界</button>
+        <button onclick="clearMap()">清空图层</button>
+    </div>
+
+    <!-- 可点开的图层列表按钮 -->
+    <button id="toggleBtn" onclick="toggleLayerList()">📋 点开查看图层列表</button>
+    <div class="layer-list" id="layerList">
+        <h4>当前图层列表</h4>
+        <div class="layer-item">☑️ 百度标准底图</div>
+        <div class="layer-item">☑️ 县级行政区划图层</div>
+        <div class="layer-item">☑️ 人口数量标注图层</div>
+        <div class="layer-item">☑️ 图例信息图层</div>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="searchBox">
+        <input type="text" id="key" placeholder="输入区县名称搜索">
+        <button onclick="doSearch()">搜索</button>
+    </div>
+
+    <!-- 图例 -->
+    <div class="legend">
+        <h4>📊 人口分布图例</h4>
+        <div><span class="colorBar" style="background:#FF5733"></span> 延平区 45.5万</div>
+        <div><span class="colorBar" style="background:#33FF57"></span> 建阳区 34.1万</div>
+        <div><span class="colorBar" style="background:#3357FF"></span> 建瓯市 42.0万</div>
+        <div><span class="colorBar" style="background:#FF33A6"></span> 邵武市 27.4万</div>
+        <div><span class="colorBar" style="background:#FF9633"></span> 武夷山市 26.0万</div>
+        <div><span class="colorBar" style="background:#33FFCE"></span> 浦城县 28.9万</div>
+        <div><span class="colorBar" style="background:#A633FF"></span> 顺昌县 17.1万</div>
+        <div><span class="colorBar" style="background:#FF3333"></span> 光泽县 12.7万</div>
+        <div><span class="colorBar" style="background:#33FF33"></span> 松溪县 12.8万</div>
+        <div><span class="colorBar" style="background:#FFFF33"></span> 政和县 17.3万</div>
+    </div>
+
+    <!-- 创新：人口概况面板 -->
+    <div class="infoCard">
+        <h4>📘 南平市概况</h4>
+        <p>下辖 2 区 3 市 5 县，总面积 2.63 万 km²</p>
+        <p>全市常住人口约 267 万人（七普）</p>
+        <p>专题图展示：各区县行政区划、人口数量空间分布</p>
+    </div>
+
+    <!-- ====================== 2. 地图区域 ====================== -->
+    <div id="map"></div>
+
+<script>
+var map;
+var overlays = [];
+
+var counties = [
+    "延平区","建阳区","建瓯市","邵武市","武夷山市",
+    "浦城县","顺昌县","光泽县","松溪县","政和县"
+];
+var colors = [
+    "#FF5733","#33FF57","#3357FF","#FF33A6","#FF9633",
+    "#33FFCE","#A633FF","#FF3333","#33FF33","#FFFF33"
+];
+var pops = [
+    454605,340843,420000,273721,259668,
+    289000,171000,127000,128000,173000
+];
+
+window.onload = function(){
+    map = new BMapGL.Map("map");
+    map.centerAndZoom(new BMapGL.Point(118.1,27.2),9);
+    map.enableScrollWheelZoom(true);
+    map.addControl(new BMapGL.ScaleControl({anchor:BMAP_ANCHOR_BOTTOM_RIGHT}));
+    showCounties();
+};
+
+// 图层列表展开/收起
+function toggleLayerList() {
+    var list = document.getElementById("layerList");
+    var btn = document.getElementById("toggleBtn");
+    if (list.style.display === "none" || list.style.display === "") {
+        list.style.display = "block";
+        btn.innerText = "📋 收起图层列表";
+    } else {
+        list.style.display = "none";
+        btn.innerText = "📋 点开查看图层列表";
+    }
+}
+
+function drawCounty(name,color,pop){
+    var bd = new BMapGL.Boundary();
+    bd.get(name,function(rs){
+        for(var i=0;i<rs.boundaries.length;i++){
+            var ply = new BMapGL.Polygon(rs.boundaries[i],{
+                strokeWeight:2,strokeColor:"#333",fillColor:color,fillOpacity:0.6
+            });
+            map.addOverlay(ply);
+            overlays.push(ply);
+        }
+        var center = getCenter(rs.boundaries[0]);
+        var lbl = new BMapGL.Label(name+"\n"+pop+"人",{position:center,offset:new BMapGL.Size(-30,-20)});
+        lbl.setStyle({background:"rgba(255,255,255,0.9)",padding:"4px",fontSize:"12px"});
+        map.addOverlay(lbl);
+        overlays.push(lbl);
+    });
+}
+
+function showCounties(){
+    clearMap();
+    for(var j=0;j<counties.length;j++){
+        drawCounty(counties[j],colors[j],pops[j]);
+    }
+}
+
+function clearMap(){
+    overlays.forEach(p=>map.removeOverlay(p));
+    overlays=[];
+}
+
+function setBaseNormal(){map.setMapType(BMAP_NORMAL_MAP);}
+function setBaseSatellite(){map.setMapType(BMAP_EARTH_MAP);}
+function doSearch(){
+    var k=document.getElementById("key").value;
+    if(k)new BMapGL.LocalSearch(map).search(k);
+}
+
+function getCenter(b){
+    var arr=b.split(";");
+    var x=0,y=0;
+    arr.forEach(p=>{
+        var ll=p.split(",");
+        x+=parseFloat(ll[0]);
+        y+=parseFloat(ll[1]);
+    });
+    return new BMapGL.Point(x/arr.length,y/arr.length);
+}
+</script>
+</body>
+</html>
