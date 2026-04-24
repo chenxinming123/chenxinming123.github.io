@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>上海市A级景点空间分布专题图</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.29/"></script>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:"Microsoft YaHei",sans-serif; }
+    /* 页眉 */
+    .header { height:50px; background:#1a56c9; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    .header .title { font-size:20px; font-weight:bold; }
+    .header .subtitle { font-size:14px; margin-top:2px; opacity:0.9; }
+
+    /* 主体布局 */
+    .body-layout { display:flex; height:calc(100vh - 50px); position:relative; }
+
+    /* 左侧控制栏 */
+    .layer-control-panel {
+      position: absolute;
+      top: 120px;
+      left: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 12px;
+      width: 160px;
+      z-index: 999;
+    }
+    .layer-control-panel button {
+      width: 100%;
+      padding: 10px 8px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 6px;
+      background: #f0f4ff;
+      color: #1a56c9;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s;
+    }
+    .layer-control-panel button:hover {
+      background: #1a56c9;
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    /* 图层列表 */
+    .layer-list-panel {
+      position: absolute;
+      top: 320px;
+      left: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 12px;
+      width: 160px;
+      z-index: 999;
+      display: none;
+    }
+    .layer-list-panel h4 {
+      color: #1a56c9;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .layer-list-panel .layer-item {
+      font-size: 13px;
+      padding: 3px 0;
+    }
+
+    /* 地图容器 */
+    .map-container { flex:1; position:relative; }
+    #viewDiv { width:100%; height:100%; }
+
+    /* 右上角搜索框 */
+    .search-box {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 320px;
+      display: flex;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 999;
+    }
+    .search-box input {
+      flex: 1;
+      border: none;
+      padding: 0 12px;
+      height: 36px;
+      outline: none;
+    }
+    .search-box button {
+      width: 60px;
+      height: 36px;
+      border: none;
+      background: #1a56c9;
+      color: white;
+      cursor: pointer;
+    }
+
+    /* 右上角概况面板 */
+    .info-panel {
+      position: absolute;
+      top: 80px;
+      right: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 12px;
+      width: 320px;
+      z-index: 999;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .info-panel h4 {
+      color: #1a56c9;
+      margin-bottom: 6px;
+    }
+
+    /* 右下角图例 —— 【修改：bottom从20px改为100px，整体上移】 */
+    .legend-panel {
+      position: absolute;
+      bottom: 100px;
+      right: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 12px;
+      width: 200px;
+      z-index: 999;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .legend-panel h4 {
+      color: #1a56c9;
+      margin-bottom: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin: 4px 0;
+    }
+    .color-swatch {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
+
+    /* 统计面板 */
+    .stat-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 12px;
+      width: 180px;
+      z-index: 999;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .stat-panel h4 {
+      color: #1a56c9;
+      margin-bottom: 8px;
+    }
+
+    /* 区域筛选面板 */
+    .district-panel {
+      position: absolute;
+      top: 450px;
+      left: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 2px 10px rgba(0,0,0,0.1);
+      padding: 12px;
+      width: 160px;
+      z-index: 999;
+      display: none;
+    }
+    .district-panel h4 {
+      color: #1a56c9;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+    .district-panel select {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    /* 底部居中：经纬度显示栏 */
+    .lonlat-box {
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.95);
+      padding: 4px 16px;
+      border-radius: 4px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.15);
+      font-size: 13px;
+      color: #333;
+      z-index: 999;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 页眉 -->
+  <div class="header">
+    <div class="title">上海市A级景点空间分布专题图</div>
+    <div class="subtitle">上海市A级旅游景区点位分布可视化地图</div>
+  </div>
+
+  <!-- 主体 -->
+  <div class="body-layout">
+    <!-- 左侧控制 -->
+    <div class="layer-control-panel">
+      <h4 style="color:#1a56c9; margin-bottom:8px; font-size:14px;">🗺️ 底图控制</h4>
+      <button onclick="setBasemap('osm')">标准地图</button>
+      <button onclick="setBasemap('satellite')">卫星地图</button>
+      
+      <h4 style="color:#1a56c9; margin:12px 0 8px; font-size:14px;">⭐ 景点图层</h4>
+      <button onclick="toggleSpotLayer()">显示/隐藏景点</button>
+      <button onclick="toggleLayerList()">图层列表</button>
+      
+      <h4 style="color:#1a56c9; margin:12px 0 8px; font-size:14px;">🎯 高级功能</h4>
+      <button onclick="toggleDistrictPanel()">区域筛选</button>
+      <button onclick="flyToCenter()">全景视角</button>
+      <button onclick="highlight5A()">高亮5A景区</button>
+    </div>
+
+    <!-- 图层列表 -->
+    <div class="layer-list-panel" id="layerListPanel">
+      <h4>当前图层列表</h4>
+      <div class="layer-item">☑️ 标准街道底图</div>
+      <div class="layer-item">☑️ 上海A级景点点位图层</div>
+    </div>
+
+    <!-- 区域筛选 -->
+    <div class="district-panel" id="districtPanel">
+      <h4>按区域筛选</h4>
+      <select id="districtSelect" onchange="filterByDistrict()">
+        <option value="全部">显示全部区域</option>
+        <option value="黄浦区">黄浦区</option>
+        <option value="浦东新区">浦东新区</option>
+        <option value="静安区">静安区</option>
+        <option value="徐汇区">徐汇区</option>
+        <option value="普陀区">普陀区</option>
+        <option value="虹口区">虹口区</option>
+        <option value="宝山区">宝山区</option>
+        <option value="嘉定区">嘉定区</option>
+        <option value="松江区">松江区</option>
+        <option value="奉贤区">奉贤区</option>
+        <option value="青浦区">青浦区</option>
+        <option value="金山区">金山区</option>
+      </select>
+    </div>
+
+    <!-- 地图容器 -->
+    <div class="map-container">
+      <div id="viewDiv"></div>
+    </div>
+
+    <!-- 搜索 -->
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="输入景点名称搜索">
+      <button onclick="doSearch()">搜索</button>
+    </div>
+
+    <!-- 上海概况 -->
+    <div class="info-panel">
+      <h4>📘 上海市概况</h4>
+      <p>直辖市，总面积 6340.5km²</p>
+      <p>拥有众多5A/4A/3A级旅游景区</p>
+      <p>本图展示：上海A级景点空间分布、景区信息查询</p>
+    </div>
+
+    <!-- 图例 -->
+    <div class="legend-panel">
+      <h4>📊 景点等级图例</h4>
+      <div class="legend-item">
+        <span class="color-swatch" style="background:#ff4d4f;"></span>
+        <span>5A级景区</span>
+      </div>
+      <div class="legend-item">
+        <span class="color-swatch" style="background:#4080ff;"></span>
+        <span>4A级景区</span>
+      </div>
+      <div class="legend-item">
+        <span class="color-swatch" style="background:#52c41a;"></span>
+        <span>3A级景区</span>
+      </div>
+    </div>
+
+    <!-- 统计面板 -->
+    <div class="stat-panel" id="statPanel">
+      <h4>📈 景点统计</h4>
+      <div>5A景区：<span id="count5A">0</span> 个</div>
+      <div>4A景区：<span id="count4A">0</span> 个</div>
+      <div>3A景区：<span id="count3A">0</span> 个</div>
+      <div>总计：<span id="countTotal">0</span> 个</div>
+    </div>
+
+    <!-- 底部居中经纬度 -->
+    <div class="lonlat-box" id="lonlatBox">经度：—  纬度：—</div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/widgets/Search",
+      "esri/widgets/ScaleBar",
+      "esri/Basemap",
+      "esri/layers/WebTileLayer",
+      "esri/Graphic",
+      "esri/layers/GraphicsLayer"
+    ], function(
+      Map, MapView, Search, ScaleBar,
+      Basemap, WebTileLayer, Graphic, GraphicsLayer
+    ) {
+      // 底图
+      const baseOsm = new Basemap({
+        baseLayers: [new WebTileLayer({ 
+          urlTemplate: "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={col}&y={row}&z={level}" 
+        })]
+      });
+      const baseSatellite = new Basemap({
+        baseLayers: [new WebTileLayer({ 
+          urlTemplate: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{level}/{row}/{col}" 
+        })]
+      });
+
+      const map = new Map({ basemap: baseOsm });
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [121.48, 31.23],
+        zoom: 10
+      });
+
+      // ========== 【修改：比例尺移到右下角】 ==========
+      const scaleBar = new ScaleBar({ view: view, unit: "metric" });
+      view.ui.add(scaleBar, "bottom-right");
+
+      // ========== 鼠标移动实时获取经纬度 ==========
+      const lonlatBox = document.getElementById("lonlatBox");
+      view.on("pointer-move", function(evt){
+        const point = view.toMap(evt);
+        if(point){
+          const lng = point.longitude.toFixed(4);
+          const lat = point.latitude.toFixed(4);
+          lonlatBox.innerText = `经度：${lng}  纬度：${lat}`;
+        }
+      });
+
+      // ====================== 上海全部A级景点数据 ======================
+      const spotData = [
+        // 5A
+        { name:"东方明珠", grade:"5A", district:"浦东新区", address:"世纪大道1号", center:[121.4998,31.2397], color:"#ff4d4f" },
+        { name:"上海科技馆", grade:"5A", district:"浦东新区", address:"世纪大道2000号", center:[121.5067,31.2209], color:"#ff4d4f" },
+        { name:"上海野生动物园", grade:"5A", district:"浦东新区", address:"南六公路178号", center:[121.7317,31.0528], color:"#ff4d4f" },
+        { name:"上海迪士尼度假区", grade:"5A", district:"浦东新区", address:"川沙黄赵路310号", center:[121.7969,31.1416], color:"#ff4d4f" },
+        { name:"豫园", grade:"5A", district:"黄浦区", address:"安仁街132号", center:[121.4936,31.2227], color:"#ff4d4f" },
+        
+        // 4A
+        { name:"外滩风景区", grade:"4A", district:"黄浦区", address:"中山东一路", center:[121.4903,31.2304], color:"#4080ff" },
+        { name:"南京路步行街", grade:"4A", district:"黄浦区", address:"南京东路", center:[121.4825,31.2335], color:"#4080ff" },
+        { name:"上海博物馆", grade:"4A", district:"黄浦区", address:"人民大道201号", center:[121.4742,31.2297], color:"#4080ff" },
+        { name:"田子坊", grade:"4A", district:"黄浦区", address:"泰康路210弄", center:[121.4796,31.2125], color:"#4080ff" },
+        { name:"静安寺", grade:"4A", district:"静安区", address:"南京西路1686号", center:[121.4533,31.2239], color:"#4080ff" },
+        { name:"朱家角古镇", grade:"4A", district:"青浦区", address:"朱家角镇", center:[121.0586,31.1164], color:"#4080ff" },
+        { name:"枫泾古镇", grade:"4A", district:"金山区", address:"枫泾镇", center:[121.0125,30.8972], color:"#4080ff" },
+        { name:"古猗园", grade:"4A", district:"嘉定区", address:"南翔镇", center:[121.3237,31.2936], color:"#4080ff" },
+        { name:"长风海洋世界", grade:"4A", district:"普陀区", address:"大渡河路451号", center:[121.4165,31.2392], color:"#4080ff" },
+        { name:"M50创意园", grade:"4A", district:"普陀区", address:"莫干山路50号", center:[121.4623,31.2486], color:"#4080ff" },
+        { name:"多伦路文化街", grade:"4A", district:"虹口区", address:"多伦路", center:[121.4805,31.2668], color:"#4080ff" },
+        { name:"世纪公园", grade:"4A", district:"浦东新区", address:"锦绣路1001号", center:[121.5447,31.2204], color:"#4080ff" },
+
+        // 3A
+        { name:"鲁迅纪念馆", grade:"3A", district:"虹口区", address:"山阴路132弄", center:[121.4723,31.2681], color:"#52c41a" },
+        { name:"龙华烈士陵园", grade:"3A", district:"徐汇区", address:"龙华西路180号", center:[121.4574,31.1832], color:"#52c41a" },
+        { name:"宝山顾村公园", grade:"3A", district:"宝山区", address:"沪太路4788号", center:[121.3645,31.3467], color:"#52c41a" },
+        { name:"松江方塔园", grade:"3A", district:"松江区", address:"中山东路235号", center:[121.2346,31.0098], color:"#52c41a" },
+        { name:"奉贤碧海金沙", grade:"3A", district:"奉贤区", address:"海湾旅游区", center:[121.5263,30.8745], color:"#52c41a" }
+      ];
+
+      const spotLayer = new GraphicsLayer();
+      window.spotLayer = spotLayer;
+      let allGraphics = [];
+
+      // 批量添加景点点位
+      spotData.forEach(item => {
+        const point = { type:"point", longitude: item.center[0], latitude: item.center[1] };
+        const symbol = {
+          type: "simple-marker",
+          color: item.color,
+          size: item.grade === "5A" ? 12 : item.grade === "4A" ? 10 : 8,
+          outline: { color: "#ffffff", width: 1.5 }
+        };
+        const graphic = new Graphic({
+          geometry: point,
+          symbol: symbol,
+          attributes: { 
+            name: item.name, 
+            grade: item.grade, 
+            district: item.district, 
+            address: item.address 
+          },
+          popupTemplate: {
+            title: "{name}",
+            content: `
+              <div>景区等级：{grade}A级</div>
+              <div>所属区域：{district}</div>
+              <div>详细地址：{address}</div>
+            `
+          }
+        });
+        spotLayer.add(graphic);
+        allGraphics.push(graphic);
+      });
+      map.add(spotLayer);
+
+      // 自动统计数量
+      countStats();
+      function countStats(){
+        let c5 = spotData.filter(i=>i.grade=="5A").length;
+        let c4 = spotData.filter(i=>i.grade=="4A").length;
+        let c3 = spotData.filter(i=>i.grade=="3A").length;
+        document.getElementById("count5A").innerText = c5;
+        document.getElementById("count4A").innerText = c4;
+        document.getElementById("count3A").innerText = c3;
+        document.getElementById("countTotal").innerText = c5+c4+c3;
+      }
+
+      // 按钮方法
+      window.setBasemap = function(name) {
+        map.basemap = name === "osm" ? baseOsm : baseSatellite;
+      };
+
+      window.toggleSpotLayer = function() {
+        spotLayer.visible = !spotLayer.visible;
+      };
+
+      window.toggleLayerList = function() {
+        const p = document.getElementById("layerListPanel");
+        p.style.display = p.style.display === "none" ? "block" : "none";
+      };
+
+      // 区域筛选面板开关
+      window.toggleDistrictPanel = function(){
+        const p = document.getElementById("districtPanel");
+        p.style.display = p.style.display === "none" ? "block" : "none";
+      };
+
+      // 按区域筛选
+      window.filterByDistrict = function(){
+        let val = document.getElementById("districtSelect").value;
+        spotLayer.removeAll();
+        allGraphics.forEach(g=>{
+          if(val=="全部" || g.attributes.district == val){
+            spotLayer.add(g);
+          }
+        });
+      };
+
+      // 飞行回全景视角
+      window.flyToCenter = function(){
+        view.goTo({
+          center: [121.48, 31.23],
+          zoom: 10
+        }, { duration: 1500 });
+      };
+
+      // 高亮5A景区
+      window.highlight5A = function(){
+        allGraphics.forEach(g=>{
+          if(g.attributes.grade == "5A"){
+            g.symbol = {
+              type: "simple-marker",
+              color: "#ff4d4f",
+              size: 14,
+              outline: { color: "#fff", width: 2 }
+            };
+          }
+        });
+      };
+
+      // 自定义搜索
+      window.doSearch = function() {
+        let key = document.getElementById("searchInput").value.trim();
+        if(!key) return;
+        let res = spotData.find(d=>d.name.includes(key)||d.district.includes(key));
+        if(res){
+          view.goTo({center:res.center,zoom:15}, { duration: 1000 });
+          let target = allGraphics.find(g=>g.attributes.name==res.name);
+          if(target){
+            target.symbol.size = 18;
+            setTimeout(()=>{
+              target.symbol.size = target.attributes.grade=="5A"?12:target.attributes.grade=="4A"?10:8;
+            }, 1000);
+          }
+        }
+      };
+    });
+  </script>
+</body>
+</html>
